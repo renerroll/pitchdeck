@@ -1,0 +1,239 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Інвестиційний слайд</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        .highlight-scale { /* Масштабування */
+            color: #f97316;
+            background: linear-gradient(90deg, #f97316, #ea580c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .highlight-product { /* Продукт */
+            color: #1e3a8a;
+            background: linear-gradient(90deg, #1e3a8a, #1e40af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .highlight-marketing { /* Маркетинг */
+            color: #10b981;
+            background: linear-gradient(90deg, #10b981, #059669);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .highlight-team { /* Зарплати */
+            color: #8b5cf6;
+            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .counter {
+            font-weight: bold;
+            color: #f97316;
+        }
+        .icon-scale { color: #f97316; }
+        .icon-product { color: #1e3a8a; }
+        .icon-marketing { color: #10b981; }
+        .icon-team { color: #8b5cf6; }
+        .icon { margin-right: 8px; }
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        @media print {
+            body {
+                width: 842px;
+                height: 595px;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                transform: scale(0.95);
+                transform-origin: top left;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white rounded-lg p-6 max-w-7xl w-full mx-4 container">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-blue-900 mb-4">
+            Чому інвестиції в нас — це успіх
+        </h1>
+
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-3">Інвестиційні потреби</h2>
+        <ul class="space-y-3 text-gray-700 text-base">
+            <li><i class="fas fa-rocket icon icon-scale"></i><span class="highlight-scale font-bold">$150 000</span> для масштабування та локалізації</li>
+            <li><i class="fas fa-cog icon icon-product"></i><span class="font-semibold">$70 000 Продукт:</span> Покращення, локалізація UI, зниження відтоку (<span class="highlight-product">8-25%</span>)</li>
+            <li><i class="fas fa-bullhorn icon icon-marketing"></i><span class="font-semibold">$50 000 Маркетинг:</span> Локальні кампанії, зниження CAC (<span class="highlight-marketing">$3-12</span>)</li>
+            <li><i class="fas fa-users icon icon-team"></i><span class="font-semibold">$30 000 Зарплати:</span> Досвідчені тех/продажники (<span class="highlight-team">SaaS-експерти</span>)</li>
+        </ul>
+        <div class="mt-3 text-xs text-gray-600">
+            <p><strong>Цілі:</strong> 12,000 користувачів, ринки США, Європи, Азії за 12 міс.</p>
+            <p><strong>Таймлайн:</strong> Локалізація UI (6 міс), маркетинг (9 міс), масштабування (12 міс).</p>
+            <p><strong>Ризики:</strong> Відтік (25%) → зниження через продукт.</p>
+        </div>
+        <canvas id="growthChart" class="max-w-[400px] mt-6"></canvas>
+    </div>
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-3">Потенціал зростання</h2>
+        <ul class="space-y-3 text-gray-700 text-base mb-3">
+            <li><i class="fas fa-users icon icon-scale"></i><span class="font-semibold">Ринок:</span> B2B SaaS ($1B TAM)</li>
+            <li><i class="fas fa-check-circle icon icon-product"></i><span class="font-semibold">Цінність:</span> Спрощення найму, зниження витрат</li>
+            <li><i class="fas fa-rocket icon icon-scale"></i><span class="font-semibold">Зростання:</span> Конверсія <span class="counter" id="conversion">0%</span></li>
+        </ul>
+        <div class="chart-container">
+            <canvas id="investmentChart" class="max-w-[300px] mb-2"></canvas>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+        <div class="text-center mt-4">
+            <p class="text-lg text-blue-700 italic">
+                "Долучайтесь до глобальної революції в рекрутингу!"
+            </p>
+        </div>
+    </div>
+    <script>
+        // Анімований лічильник для конверсії
+        function animateCounter(id, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                document.getElementById(id).textContent = `${value}%`;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+        animateCounter('conversion', 0, 8, 2000);
+
+        // Кругова діаграма (розподіл інвестицій)
+        const investmentCtx = document.getElementById('investmentChart').getContext('2d');
+        new Chart(investmentCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Продукт', 'Маркетинг', 'Зарплати'],
+                datasets: [{
+                    data: [47, 33, 20],
+                    backgroundColor: ['#1e3a8a', '#10b981', '#8b5cf6'],
+                    borderColor: ['#fff', '#fff', '#fff'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuad'
+                },
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#1f2937' } },
+                    tooltip: { callbacks: { label: function(context) { return `${context.label}: ${context.raw}%`; } } }
+                }
+            }
+        });
+
+        // Лінійні графіки (зростання з і без інвестицій)
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        new Chart(growthCtx, {
+            type: 'line',
+            data: {
+                labels: ['1 міс', '3 міс', '6 міс', '9 міс', '12 міс'],
+                datasets: [
+                    {
+                        label: 'З інвестиціями ($150K)',
+                        data: [1000, 3500, 6000, 9000, 12000],
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Без інвестицій',
+                        data: [1000, 1500, 2000, 2500, 3000],
+                        borderColor: '#6b7280',
+                        backgroundColor: 'rgba(107, 114, 128, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 2000,
+                    easing: 'easeInOutQuad'
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Кількість користувачів', font: { size: 12 } } },
+                    x: { title: { display: true, text: 'Час', font: { size: 12 } } }
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 12 }, color: '#1f2937' } },
+                    tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw}`; } } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
